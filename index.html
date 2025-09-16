@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل المجموعات الدراسية</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap');
+        body { font-family: 'Cairo', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-shadow { box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .hover-scale { transition: transform 0.2s; }
+        .hover-scale:hover { transform: scale(1.02); }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <div class="gradient-bg text-white py-8">
+        <div class="container mx-auto px-4 text-center">
+            <h1 class="text-4xl font-bold mb-2">🏥 تسجيل المجموعات الدراسية</h1>
+            <p class="text-xl opacity-90">كلية الطب - تقسيم الطلاب للمجموعات العملية</p>
+        </div>
+    </div>
+
+    <!-- Status Cards -->
+    <div class="container mx-auto px-4 -mt-6 mb-8">
+        <div class="grid md:grid-cols-2 gap-6">
+            <div class="bg-white rounded-xl card-shadow p-6 hover-scale">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-xl font-bold text-blue-600 mb-2">🫀 مجموعة A - الباطنية</h3>
+                        <p class="text-gray-600">عدد الطلاب: <span id="groupACount" class="font-bold text-blue-600">0</span></p>
+                        <p class="text-gray-600">المتبقي: <span id="groupARemaining" class="font-bold text-green-600">100</span></p>
+                    </div>
+                    <div class="text-4xl">📚</div>
+                </div>
+                <div class="mt-4 bg-blue-100 rounded-full h-3">
+                    <div id="groupAProgress" class="bg-blue-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl card-shadow p-6 hover-scale">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-xl font-bold text-purple-600 mb-2">🔪 مجموعة B - الجراحة</h3>
+                        <p class="text-gray-600">عدد الطلاب: <span id="groupBCount" class="font-bold text-purple-600">0</span></p>
+                        <p class="text-gray-600">المتبقي: <span id="groupBRemaining" class="font-bold text-green-600">100</span></p>
+                    </div>
+                    <div class="text-4xl">⚕️</div>
+                </div>
+                <div class="mt-4 bg-purple-100 rounded-full h-3">
+                    <div id="groupBProgress" class="bg-purple-600 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Registration Form -->
+    <div class="container mx-auto px-4 mb-8">
+        <div class="bg-white rounded-xl card-shadow p-8 max-w-2xl mx-auto">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">📝 تسجيل طالب جديد</h2>
+            
+            <form id="registrationForm" class="space-y-6">
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">الاسم الثلاثي</label>
+                    <input type="text" id="studentName" required 
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           placeholder="أدخل اسمك الثلاثي">
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">كلمة السر (اختيارية)</label>
+                    <input type="password" id="studentPassword" 
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           placeholder="كلمة سر لحماية بياناتك (اختيارية)">
+                    <p class="text-sm text-gray-500 mt-1">ستحتاج هذه الكلمة لتعديل بياناتك لاحقاً</p>
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">اختر المجموعة</label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="group" value="A" class="sr-only peer">
+                            <div class="p-4 border-2 border-gray-200 rounded-lg peer-checked:border-blue-500 peer-checked:bg-blue-50 hover:bg-gray-50 transition-all">
+                                <div class="text-center">
+                                    <div class="text-2xl mb-2">🫀</div>
+                                    <div class="font-semibold text-blue-600">مجموعة A</div>
+                                    <div class="text-sm text-gray-600">الباطنية</div>
+                                </div>
+                            </div>
+                        </label>
+                        
+                        <label class="cursor-pointer">
+                            <input type="radio" name="group" value="B" class="sr-only peer">
+                            <div class="p-4 border-2 border-gray-200 rounded-lg peer-checked:border-purple-500 peer-checked:bg-purple-50 hover:bg-gray-50 transition-all">
+                                <div class="text-center">
+                                    <div class="text-2xl mb-2">🔪</div>
+                                    <div class="font-semibold text-purple-600">مجموعة B</div>
+                                    <div class="text-sm text-gray-600">الجراحة</div>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                
+                <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105">
+                    ✅ تسجيل في المجموعة
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div class="container mx-auto px-4 mb-8">
+        <div class="bg-white rounded-xl card-shadow p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-gray-800">👨‍💼 لوحة الإدارة</h3>
+                <button id="adminToggle" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                    🔐 دخول الإدارة
+                </button>
+            </div>
+            
+            <div id="adminPanel" class="hidden space-y-4">
+                <div class="flex gap-4">
+                    <button id="exportExcel" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                        📊 تصدير إلى Excel
+                    </button>
+                    <button id="clearAll" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">
+                        🗑️ حذف جميع البيانات
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Students Lists -->
+    <div class="container mx-auto px-4 mb-8">
+        <div class="grid md:grid-cols-2 gap-6">
+            <!-- Group A List -->
+            <div class="bg-white rounded-xl card-shadow p-6">
+                <h3 class="text-xl font-bold text-blue-600 mb-4 flex items-center">
+                    🫀 طلاب مجموعة A - الباطنية
+                </h3>
+                <div id="groupAList" class="space-y-2 max-h-96 overflow-y-auto">
+                    <p class="text-gray-500 text-center py-4">لا يوجد طلاب مسجلين بعد</p>
+                </div>
+            </div>
+            
+            <!-- Group B List -->
+            <div class="bg-white rounded-xl card-shadow p-6">
+                <h3 class="text-xl font-bold text-purple-600 mb-4 flex items-center">
+                    🔪 طلاب مجموعة B - الجراحة
+                </h3>
+                <div id="groupBList" class="space-y-2 max-h-96 overflow-y-auto">
+                    <p class="text-gray-500 text-center py-4">لا يوجد طلاب مسجلين بعد</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <h3 class="text-xl font-bold mb-4">✏️ تعديل بيانات الطالب</h3>
+            <div id="editForm" class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">الاسم الجديد</label>
+                    <input type="text" id="editName" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">المجموعة</label>
+                    <select id="editGroup" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        <option value="A">مجموعة A - الباطنية</option>
+                        <option value="B">مجموعة B - الجراحة</option>
+                    </select>
+                </div>
+                <div class="flex gap-2">
+                    <button id="saveEdit" class="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">حفظ</button>
+                    <button id="deleteStudent" class="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700">حذف</button>
+                    <button id="cancelEdit" class="flex-1 bg-gray-600 text-white py-2 rounded-lg hover:bg-gray-700">إلغاء</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data storage
+        let students = JSON.parse(localStorage.getItem('students') || '[]');
+        let isAdminMode = false;
+        let currentEditingStudent = null;
+        const ADMIN_CODE = 'qfvlu10178';
+
+        // Initialize
+        updateDisplay();
+
+        // Registration form
+        document.getElementById('registrationForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('studentName').value.trim();
+            const password = document.getElementById('studentPassword').value;
+            const group = document.querySelector('input[name="group"]:checked')?.value;
+            
+            if (!name || !group) {
+                alert('يرجى ملء جميع الحقول المطلوبة');
+                return;
+            }
+            
+            // Check if group is full
+            const groupCount = students.filter(s => s.group === group).length;
+            if (groupCount >= 100) {
+                alert(`مجموعة ${group === 'A' ? 'الباطنية' : 'الجراحة'} ممتلئة! (الحد الأقصى 100 طالب)`);
+                return;
+            }
+            
+            // Check if name already exists
+            if (students.some(s => s.name === name)) {
+                alert('هذا الاسم مسجل مسبقاً');
+                return;
+            }
+            
+            // Add student
+            students.push({
+                id: Date.now(),
+                name: name,
+                password: password,
+                group: group,
+                timestamp: new Date().toLocaleString('ar-SA')
+            });
+            
+            localStorage.setItem('students', JSON.stringify(students));
+            updateDisplay();
+            
+            // Reset form
+            document.getElementById('registrationForm').reset();
+            alert(`تم تسجيلك بنجاح في مجموعة ${group === 'A' ? 'A - الباطنية' : 'B - الجراحة'}! 🎉`);
+        });
+
+        // Admin toggle
+        document.getElementById('adminToggle').addEventListener('click', function() {
+            if (!isAdminMode) {
+                const code = prompt('أدخل رمز الإدارة:');
+                if (code === ADMIN_CODE) {
+                    isAdminMode = true;
+                    document.getElementById('adminPanel').classList.remove('hidden');
+                    this.textContent = '🔓 خروج من الإدارة';
+                    this.classList.remove('bg-gray-600', 'hover:bg-gray-700');
+                    this.classList.add('bg-red-600', 'hover:bg-red-700');
+                    updateDisplay();
+                } else {
+                    alert('رمز الإدارة غير صحيح');
+                }
+            } else {
+                isAdminMode = false;
+                document.getElementById('adminPanel').classList.add('hidden');
+                this.textContent = '🔐 دخول الإدارة';
+                this.classList.remove('bg-red-600', 'hover:bg-red-700');
+                this.classList.add('bg-gray-600', 'hover:bg-gray-700');
+                updateDisplay();
+            }
+        });
+
+        // Export to Excel
+        document.getElementById('exportExcel').addEventListener('click', function() {
+            if (students.length === 0) {
+                alert('لا توجد بيانات للتصدير');
+                return;
+            }
+            
+            const ws = XLSX.utils.json_to_sheet(students.map(s => ({
+                'الاسم': s.name,
+                'المجموعة': s.group === 'A' ? 'A - الباطنية' : 'B - الجراحة',
+                'تاريخ التسجيل': s.timestamp
+            })));
+            
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'قائمة الطلاب');
+            XLSX.writeFile(wb, 'قائمة_الطلاب_المجموعات.xlsx');
+        });
+
+        // Clear all data
+        document.getElementById('clearAll').addEventListener('click', function() {
+            if (confirm('هل أنت متأكد من حذف جميع البيانات؟ هذا الإجراء لا يمكن التراجع عنه!')) {
+                students = [];
+                localStorage.removeItem('students');
+                updateDisplay();
+                alert('تم حذف جميع البيانات');
+            }
+        });
+
+        // Edit student
+        function editStudent(studentId) {
+            const student = students.find(s => s.id === studentId);
+            if (!student) return;
+            
+            if (!isAdminMode && student.password) {
+                const enteredPassword = prompt('أدخل كلمة السر للطالب:');
+                if (enteredPassword !== student.password) {
+                    alert('كلمة السر غير صحيحة');
+                    return;
+                }
+            }
+            
+            currentEditingStudent = student;
+            document.getElementById('editName').value = student.name;
+            document.getElementById('editGroup').value = student.group;
+            document.getElementById('editModal').classList.remove('hidden');
+            document.getElementById('editModal').classList.add('flex');
+        }
+
+        // Save edit
+        document.getElementById('saveEdit').addEventListener('click', function() {
+            const newName = document.getElementById('editName').value.trim();
+            const newGroup = document.getElementById('editGroup').value;
+            
+            if (!newName) {
+                alert('يرجى إدخال اسم صحيح');
+                return;
+            }
+            
+            // Check if new name already exists (excluding current student)
+            if (students.some(s => s.name === newName && s.id !== currentEditingStudent.id)) {
+                alert('هذا الاسم مسجل مسبقاً');
+                return;
+            }
+            
+            // Check if new group is full (excluding current student)
+            const groupCount = students.filter(s => s.group === newGroup && s.id !== currentEditingStudent.id).length;
+            if (groupCount >= 100) {
+                alert(`مجموعة ${newGroup === 'A' ? 'الباطنية' : 'الجراحة'} ممتلئة!`);
+                return;
+            }
+            
+            currentEditingStudent.name = newName;
+            currentEditingStudent.group = newGroup;
+            
+            localStorage.setItem('students', JSON.stringify(students));
+            updateDisplay();
+            closeEditModal();
+            alert('تم حفظ التعديلات بنجاح');
+        });
+
+        // Delete student
+        document.getElementById('deleteStudent').addEventListener('click', function() {
+            if (confirm('هل أنت متأكد من حذف هذا الطالب؟')) {
+                students = students.filter(s => s.id !== currentEditingStudent.id);
+                localStorage.setItem('students', JSON.stringify(students));
+                updateDisplay();
+                closeEditModal();
+                alert('تم حذف الطالب');
+            }
+        });
+
+        // Cancel edit
+        document.getElementById('cancelEdit').addEventListener('click', closeEditModal);
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+            document.getElementById('editModal').classList.remove('flex');
+            currentEditingStudent = null;
+        }
+
+        // Update display
+        function updateDisplay() {
+            const groupA = students.filter(s => s.group === 'A');
+            const groupB = students.filter(s => s.group === 'B');
+            
+            // Update counters
+            document.getElementById('groupACount').textContent = groupA.length;
+            document.getElementById('groupARemaining').textContent = 100 - groupA.length;
+            document.getElementById('groupBCount').textContent = groupB.length;
+            document.getElementById('groupBRemaining').textContent = 100 - groupB.length;
+            
+            // Update progress bars
+            document.getElementById('groupAProgress').style.width = (groupA.length / 100 * 100) + '%';
+            document.getElementById('groupBProgress').style.width = (groupB.length / 100 * 100) + '%';
+            
+            // Update lists
+            updateStudentList('groupAList', groupA, 'A');
+            updateStudentList('groupBList', groupB, 'B');
+        }
+
+        function updateStudentList(containerId, students, group) {
+            const container = document.getElementById(containerId);
+            
+            if (students.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">لا يوجد طلاب مسجلين بعد</p>';
+                return;
+            }
+            
+            container.innerHTML = students.map((student, index) => `
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div class="flex items-center gap-3">
+                        <span class="w-8 h-8 bg-${group === 'A' ? 'blue' : 'purple'}-100 text-${group === 'A' ? 'blue' : 'purple'}-600 rounded-full flex items-center justify-center font-semibold text-sm">
+                            ${index + 1}
+                        </span>
+                        <span class="font-medium">${student.name}</span>
+                    </div>
+                    <button onclick="editStudent(${student.id})" 
+                            class="text-sm bg-${group === 'A' ? 'blue' : 'purple'}-600 text-white px-3 py-1 rounded-lg hover:bg-${group === 'A' ? 'blue' : 'purple'}-700 transition-colors">
+                        ✏️ تعديل
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('editModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeEditModal();
+            }
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97ffcc1be0af6ea0',t:'MTc1ODAxOTc2Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
