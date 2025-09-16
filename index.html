@@ -4,11 +4,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تسجيل المجموعات الدراسية</title>
-    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js"></script>
-
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- Firebase Configuration -->
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+        import { getDatabase, ref, set, get, remove, onValue } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-analytics.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBAD95ieu_ou7XTi08R0f8Wuz0UKNz8hbk",
+            authDomain: "group-e5e26.firebaseapp.com",
+            databaseURL: "https://group-e5e26-default-rtdb.firebaseio.com",
+            projectId: "group-e5e26",
+            storageBucket: "group-e5e26.firebasestorage.app",
+            messagingSenderId: "1234567890",
+            appId: "1:1234567890:web:50bc94019d6cae46b58e12",
+            measurementId: "G-7DR29B4BWJ"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        const analytics = getAnalytics(app);
+
+        // Make Firebase available globally
+        window.firebaseDB = database;
+        window.firebaseRef = ref;
+        window.firebaseSet = set;
+        window.firebaseGet = get;
+        window.firebaseRemove = remove;
+        window.firebaseOnValue = onValue;
+    </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap');
         body { font-family: 'Cairo', sans-serif; }
@@ -187,45 +217,64 @@
             </div>
         </div>
     </div>
-<script>
-  // إعدادات Firebase الخاصة بك
-  const firebaseConfig = {
-    apiKey: "AIzaSyBAD95ieu_ou7XT...8hbk",
-    authDomain: "group-e5e26.firebaseapp.com",
-    databaseURL: "https://group-e5e26-default-rtdb.firebaseio.com",
-    projectId: "group-e5e26",
-    storageBucket: "group-e5e26.appspot.com",
-    messagingSenderId: "1053317656919",
-    appId: "1:1053317656919:web:50bc94019d6cae46b58e12",
-    measurementId: "G-7DR29B4BWJ"
-  };
-
-  // تهيئة Firebase
-  const app = firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-</script>
 
     <script>
         // Data storage
-    let students = [];
-
-db.ref('students').on('value', (snapshot) => {
-  students = [];
-  snapshot.forEach(child => {
-    students.push(child.val());
-  });
-  updateDisplay();
-});
-
+        let students = [];
         let isAdminMode = false;
         let currentEditingStudent = null;
         const ADMIN_CODE = 'qfvlu10178';
 
+        // Wait for Firebase to be ready
+        function waitForFirebase() {
+            return new Promise((resolve) => {
+                const checkFirebase = () => {
+                    if (window.firebaseDB) {
+                        resolve();
+                    } else {
+                        setTimeout(checkFirebase, 100);
+                    }
+                };
+                checkFirebase();
+            });
+        }
+
+        // Initialize Firebase and load data
+        async function initializeApp() {
+            await waitForFirebase();
+            
+            // Listen for real-time updates
+            const studentsRef = window.firebaseRef(window.firebaseDB, 'students');
+            window.firebaseOnValue(studentsRef, (snapshot) => {
+                const data = snapshot.val();
+                students = data ? Object.values(data) : [];
+                updateDisplay();
+            });
+        }
+
+        // Save student to Firebase
+        async function saveStudentToFirebase(student) {
+            const studentRef = window.firebaseRef(window.firebaseDB, `students/${student.id}`);
+            await window.firebaseSet(studentRef, student);
+        }
+
+        // Delete student from Firebase
+        async function deleteStudentFromFirebase(studentId) {
+            const studentRef = window.firebaseRef(window.firebaseDB, `students/${studentId}`);
+            await window.firebaseRemove(studentRef);
+        }
+
+        // Clear all data from Firebase
+        async function clearAllDataFromFirebase() {
+            const studentsRef = window.firebaseRef(window.firebaseDB, 'students');
+            await window.firebaseRemove(studentsRef);
+        }
+
         // Initialize
-        updateDisplay();
+        initializeApp();
 
         // Registration form
-        document.getElementById('registrationForm').addEventListener('submit', function(e) {
+        document.getElementById('registrationForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const name = document.getElementById('studentName').value.trim();
@@ -250,20 +299,25 @@ db.ref('students').on('value', (snapshot) => {
                 return;
             }
             
-           const newStudentRef = db.ref('students').push();
-newStudentRef.set({
-    id: Date.now(),
-    name: name,
-    password: password,
-    group: group,
-    timestamp: new Date().toLocaleString('ar-SA')
-});
-
-            updateDisplay();
+            // Add student
+            const newStudent = {
+                id: Date.now(),
+                name: name,
+                password: password,
+                group: group,
+                timestamp: new Date().toLocaleString('ar-SA')
+            };
             
-            // Reset form
-            document.getElementById('registrationForm').reset();
-            alert(`تم تسجيلك بنجاح في مجموعة ${group === 'A' ? 'A - الباطنية' : 'B - الجراحة'}! 🎉`);
+            try {
+                await saveStudentToFirebase(newStudent);
+                
+                // Reset form
+                document.getElementById('registrationForm').reset();
+                alert(`تم تسجيلك بنجاح في مجموعة ${group === 'A' ? 'A - الباطنية' : 'B - الجراحة'}! 🎉`);
+            } catch (error) {
+                console.error('Error saving student:', error);
+                alert('حدث خطأ أثناء التسجيل. يرجى المحاولة مرة أخرى.');
+            }
         });
 
         // Admin toggle
@@ -309,12 +363,15 @@ newStudentRef.set({
         });
 
         // Clear all data
-        document.getElementById('clearAll').addEventListener('click', function() {
+        document.getElementById('clearAll').addEventListener('click', async function() {
             if (confirm('هل أنت متأكد من حذف جميع البيانات؟ هذا الإجراء لا يمكن التراجع عنه!')) {
-                students = [];
-                localStorage.removeItem('students');
-                updateDisplay();
-                alert('تم حذف جميع البيانات');
+                try {
+                    await clearAllDataFromFirebase();
+                    alert('تم حذف جميع البيانات');
+                } catch (error) {
+                    console.error('Error clearing data:', error);
+                    alert('حدث خطأ أثناء حذف البيانات');
+                }
             }
         });
 
@@ -339,7 +396,7 @@ newStudentRef.set({
         }
 
         // Save edit
-        document.getElementById('saveEdit').addEventListener('click', function() {
+        document.getElementById('saveEdit').addEventListener('click', async function() {
             const newName = document.getElementById('editName').value.trim();
             const newGroup = document.getElementById('editGroup').value;
             
@@ -364,20 +421,27 @@ newStudentRef.set({
             currentEditingStudent.name = newName;
             currentEditingStudent.group = newGroup;
             
-            localStorage.setItem('students', JSON.stringify(students));
-            updateDisplay();
-            closeEditModal();
-            alert('تم حفظ التعديلات بنجاح');
+            try {
+                await saveStudentToFirebase(currentEditingStudent);
+                closeEditModal();
+                alert('تم حفظ التعديلات بنجاح');
+            } catch (error) {
+                console.error('Error updating student:', error);
+                alert('حدث خطأ أثناء حفظ التعديلات');
+            }
         });
 
         // Delete student
-        document.getElementById('deleteStudent').addEventListener('click', function() {
+        document.getElementById('deleteStudent').addEventListener('click', async function() {
             if (confirm('هل أنت متأكد من حذف هذا الطالب؟')) {
-                students = students.filter(s => s.id !== currentEditingStudent.id);
-                localStorage.setItem('students', JSON.stringify(students));
-                updateDisplay();
-                closeEditModal();
-                alert('تم حذف الطالب');
+                try {
+                    await deleteStudentFromFirebase(currentEditingStudent.id);
+                    closeEditModal();
+                    alert('تم حذف الطالب');
+                } catch (error) {
+                    console.error('Error deleting student:', error);
+                    alert('حدث خطأ أثناء حذف الطالب');
+                }
             }
         });
 
@@ -441,6 +505,5 @@ newStudentRef.set({
             }
         });
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97ffcc1be0af6ea0',t:'MTc1ODAxOTc2Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97ffe074e6eed5fc',t:'MTc1ODAyMDYwMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
-
