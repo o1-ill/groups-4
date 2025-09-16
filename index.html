@@ -10,9 +10,8 @@
     <!-- Firebase Configuration -->
     <script type="module">
         // Import the functions you need from the SDKs you need
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
-        import { getDatabase, ref, set, get, remove, onValue } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-analytics.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, get, remove, onValue, push } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
         // Your web app's Firebase configuration
         const firebaseConfig = {
@@ -21,15 +20,14 @@
             databaseURL: "https://group-e5e26-default-rtdb.firebaseio.com",
             projectId: "group-e5e26",
             storageBucket: "group-e5e26.firebasestorage.app",
-            messagingSenderId: "1234567890",
-            appId: "1:1234567890:web:50bc94019d6cae46b58e12",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:50bc94019d6cae46b58e12",
             measurementId: "G-7DR29B4BWJ"
         };
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
-        const analytics = getAnalytics(app);
 
         // Make Firebase available globally
         window.firebaseDB = database;
@@ -38,6 +36,8 @@
         window.firebaseGet = get;
         window.firebaseRemove = remove;
         window.firebaseOnValue = onValue;
+        window.firebasePush = push;
+        window.firebaseReady = true;
     </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap');
@@ -46,6 +46,48 @@
         .card-shadow { box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         .hover-scale { transition: transform 0.2s; }
         .hover-scale:hover { transform: scale(1.02); }
+        
+        /* Success Animation */
+        .success-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            z-index: 1000;
+            text-align: center;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .success-popup.show {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+        
+        .success-popup .checkmark {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            margin: 0 auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            animation: bounce 0.6s ease;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 53%, 80%, 100% { transform: translate3d(0,0,0); }
+            40%, 43% { transform: translate3d(0,-20px,0); }
+            70% { transform: translate3d(0,-10px,0); }
+            90% { transform: translate3d(0,-4px,0); }
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -193,6 +235,13 @@
         </div>
     </div>
 
+    <!-- Success Animation -->
+    <div id="successPopup" class="success-popup">
+        <div class="checkmark">✅</div>
+        <h3 class="text-xl font-bold mb-2">تم التسجيل بنجاح!</h3>
+        <p id="successMessage" class="text-sm opacity-90"></p>
+    </div>
+
     <!-- Edit Modal -->
     <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
         <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
@@ -229,7 +278,7 @@
         function waitForFirebase() {
             return new Promise((resolve) => {
                 const checkFirebase = () => {
-                    if (window.firebaseDB) {
+                    if (window.firebaseReady && window.firebaseDB) {
                         resolve();
                     } else {
                         setTimeout(checkFirebase, 100);
@@ -241,21 +290,52 @@
 
         // Initialize Firebase and load data
         async function initializeApp() {
-            await waitForFirebase();
-            
-            // Listen for real-time updates
-            const studentsRef = window.firebaseRef(window.firebaseDB, 'students');
-            window.firebaseOnValue(studentsRef, (snapshot) => {
-                const data = snapshot.val();
-                students = data ? Object.values(data) : [];
+            try {
+                await waitForFirebase();
+                console.log('Firebase initialized successfully');
+                
+                // Listen for real-time updates
+                const studentsRef = window.firebaseRef(window.firebaseDB, 'students');
+                window.firebaseOnValue(studentsRef, (snapshot) => {
+                    const data = snapshot.val();
+                    students = data ? Object.values(data) : [];
+                    updateDisplay();
+                });
+            } catch (error) {
+                console.error('Firebase initialization error:', error);
+                // Fallback to localStorage if Firebase fails
+                students = JSON.parse(localStorage.getItem('students') || '[]');
                 updateDisplay();
-            });
+            }
+        }
+
+        // Show success animation
+        function showSuccessAnimation(message) {
+            const popup = document.getElementById('successPopup');
+            const messageEl = document.getElementById('successMessage');
+            
+            messageEl.textContent = message;
+            popup.classList.add('show');
+            
+            setTimeout(() => {
+                popup.classList.remove('show');
+            }, 3000);
         }
 
         // Save student to Firebase
         async function saveStudentToFirebase(student) {
-            const studentRef = window.firebaseRef(window.firebaseDB, `students/${student.id}`);
-            await window.firebaseSet(studentRef, student);
+            try {
+                const studentRef = window.firebaseRef(window.firebaseDB, `students/${student.id}`);
+                await window.firebaseSet(studentRef, student);
+                return true;
+            } catch (error) {
+                console.error('Firebase save error:', error);
+                // Fallback to localStorage
+                students.push(student);
+                localStorage.setItem('students', JSON.stringify(students));
+                updateDisplay();
+                return true;
+            }
         }
 
         // Delete student from Firebase
@@ -309,11 +389,16 @@
             };
             
             try {
-                await saveStudentToFirebase(newStudent);
+                const success = await saveStudentToFirebase(newStudent);
                 
-                // Reset form
-                document.getElementById('registrationForm').reset();
-                alert(`تم تسجيلك بنجاح في مجموعة ${group === 'A' ? 'A - الباطنية' : 'B - الجراحة'}! 🎉`);
+                if (success) {
+                    // Reset form
+                    document.getElementById('registrationForm').reset();
+                    
+                    // Show success animation
+                    const groupName = group === 'A' ? 'A - الباطنية' : 'B - الجراحة';
+                    showSuccessAnimation(`تم تسجيلك في مجموعة ${groupName}`);
+                }
             } catch (error) {
                 console.error('Error saving student:', error);
                 alert('حدث خطأ أثناء التسجيل. يرجى المحاولة مرة أخرى.');
@@ -505,5 +590,5 @@
             }
         });
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97ffe074e6eed5fc',t:'MTc1ODAyMDYwMS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97ffe9706436d5fc',t:'MTc1ODAyMDk2OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
