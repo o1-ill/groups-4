@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>تسجيل المجموعات الدراسية</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js"></script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
@@ -184,10 +187,36 @@
             </div>
         </div>
     </div>
+<script>
+  // إعدادات Firebase الخاصة بك
+  const firebaseConfig = {
+    apiKey: "AIzaSyBAD95ieu_ou7XT...8hbk",
+    authDomain: "group-e5e26.firebaseapp.com",
+    databaseURL: "https://group-e5e26-default-rtdb.firebaseio.com",
+    projectId: "group-e5e26",
+    storageBucket: "group-e5e26.appspot.com",
+    messagingSenderId: "1053317656919",
+    appId: "1:1053317656919:web:50bc94019d6cae46b58e12",
+    measurementId: "G-7DR29B4BWJ"
+  };
+
+  // تهيئة Firebase
+  const app = firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+</script>
 
     <script>
         // Data storage
-        let students = JSON.parse(localStorage.getItem('students') || '[]');
+    let students = [];
+
+db.ref('students').on('value', (snapshot) => {
+  students = [];
+  snapshot.forEach(child => {
+    students.push(child.val());
+  });
+  updateDisplay();
+});
+
         let isAdminMode = false;
         let currentEditingStudent = null;
         const ADMIN_CODE = 'qfvlu10178';
@@ -221,16 +250,15 @@
                 return;
             }
             
-            // Add student
-            students.push({
-                id: Date.now(),
-                name: name,
-                password: password,
-                group: group,
-                timestamp: new Date().toLocaleString('ar-SA')
-            });
-            
-            localStorage.setItem('students', JSON.stringify(students));
+           const newStudentRef = db.ref('students').push();
+newStudentRef.set({
+    id: Date.now(),
+    name: name,
+    password: password,
+    group: group,
+    timestamp: new Date().toLocaleString('ar-SA')
+});
+
             updateDisplay();
             
             // Reset form
@@ -415,3 +443,4 @@
     </script>
 <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97ffcc1be0af6ea0',t:'MTc1ODAxOTc2Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
+
